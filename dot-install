@@ -1,0 +1,453 @@
+#!/bin/sh
+
+self=$0
+
+repo=git://github.com/dgvncsz0f/dot.git
+root=~
+rcfile=~/.dot-install.rc
+verbosity=2
+logfile=/dev/null
+bundle=
+module=
+
+bin_mktemp=${bin_mktemp:-mktemp}
+bin_unlink=${bin_unlink:-unlink}
+bin_md5sum=${bin_md5sum:-md5sum}
+bin_cat=${bin_cat:-cat}
+bin_cut=${bin_cut:-cut}
+bin_ln=${bin_ln:-ln}
+bin_grep=${bin_grep:-grep}
+bin_cp=${bin_cp:-cp}
+bin_git=${bin_git:-git}
+bin_expr=${bin_expr:-expr}
+bin_env=${bin_env:-env}
+bin_find=${bin_find:-find}
+bin_dirname=${bin_dirname:-dirname}
+bin_rm=${bin_rm:-rm}
+bin_tar=${bin_tar:-tar}
+
+exec 3>&1
+
+cd /
+
+dot_dryrun_mode ()
+{
+  test -n "$dryrun"
+}
+
+dot_dye ()
+{
+  dot_finalize
+
+  if [ -n "$1" ]
+  then
+    echo "ERROR: $@" >&3
+  else
+    while read line
+    do
+      echo "ERROR: $line" >&3
+    done
+  fi
+  exit -1
+}
+
+dot_quit ()
+{
+  dot_stdout "$@"
+  exit 0
+}
+
+dot_loadrc ()
+{
+  test -f "$rcfile" && . "$rcfile"
+}
+
+dot_checkbin_abort_with ()
+{
+  local var prg
+  var=$1
+  prg=$2
+
+  dot_dye <<EOF 
+Could not find \`$prg' program. You may provide the right location for
+this using:
+
+  $ env $var=/path/to/file $self ...
+
+Additionaly, you may create or edit a file named $rcfile defining this
+variable (shell syntax), as follows:
+
+  $ echo $var=/path/to/file >>$rcfile
+EOF
+}
+
+dot_checkbin ()
+{
+  local var prg
+
+  while [ "$#" -gt 0 ]
+  do
+    var=$1
+    prg=$2
+
+    if ! command -V "$prg" 2>/dev/null >/dev/null
+    then
+      dot_checkbin_abort_with $var "$prg"
+    fi
+    shift 2
+  done
+}
+
+dot_env_set ()
+{
+  local key expr size val
+
+  dot_checkbin bin_expr "$bin_expr"
+
+  key="$1"
+  expr="$2"
+  size=$($bin_expr length $key + 2)
+
+  if $bin_expr match "$expr" "^$key=[a-z0-9_@/\.\-]*$" >/dev/null
+  then
+    val=$(echo -n "$expr" | $bin_cut -c $size-)
+    eval $key=\"$val\"
+  fi
+}
+
+dot_env_add ()
+{
+  local key expr cval
+
+  dot_checkbin bin_expr "$bin_expr"
+
+  key="$1"
+  expr="$2"
+
+  if $bin_expr match "$expr" "^$key=" >/dev/null
+  then
+    cval=$(eval echo \$$key)
+    dot_env_set "$key" "$expr"
+    if [ -n "$cval" ]
+    then
+      eval $key=\"\$\{$key\} $cval\"
+    fi
+  fi
+}
+
+dot_loadenv ()
+{
+  local IFS size
+
+  for expr in "$@"
+  do
+    for key in verbosity rcfile repo root logfile dryrun
+    do
+      dot_env_set $key "$expr"
+    done
+
+    for key in bundle module
+    do
+      dot_env_add $key "$expr"
+    done
+  done
+
+  if [ -z "$bundle" -a -z "$module" ]
+  then
+    read -p "bundle to install: " bundle
+  fi
+}
+
+dot_chkenv ()
+{
+  if [ -z "$bundle" -a -z "$module" ]
+  then
+    dot_quit <<EOF
+Usage: $self [OPTION]...
+This script will download a git repository, namely a dot repository,
+and will install all modules that match a given bundle or module
+specification
+
+Mandatory OPTIONS:
+ bundle     The bundle to install. May be used in conjunction with module.
+
+ module     The module to install. May be used in conjunction with bundle.
+
+At least one bundle or module must be given.
+
+Other OPTIONS:
+      repo  The git repository to clone [default: $repo]
+
+      root  The directory to install the files [default: $root]
+
+    rcfile  The file to load at startup. You may use this to set defaults
+
+ verbosity  Adjusts the script verbosity. Ranges from 0 [no output] to 3
+            [very chatty] logfile=LOGFILE
+
+            The file that will capture the output of the commands, like
+            git for instance. This is a good place to look for errors.
+
+     dryrun If defined, it only stages files, but do not install
+            them. This is usually for development purposes, but you
+            may use to double check the files that will be installed.
+EOF
+    return 1
+  fi
+
+  dot_log_2 "dot-install environemnt"
+  dot_log_2 "============================================================================"
+  dot_log_2 "     repo: $repo"
+  dot_log_2 "     root: $root"
+  dot_log_2 "   bundle: $bundle"
+  dot_log_2 "   module: $module"
+  dot_log_2 "   rcfile: $rcfile"
+  dot_log_2 "verbosity: $verbosity"
+  dot_log_2 "  logfile: $logfile"
+  dot_log_2 "  dotroot: $dotroot"
+  dot_log_2 "  stgroot: $stgroot"
+  dot_log_2 "   dryrun: $dryrun"
+  dot_log_2 "============================================================================"
+
+  return 0
+}
+
+dot_initialize ()
+{
+  local hash
+
+  if [ "$logfile" != "-" ]
+  then
+    exec >$logfile 2>&1
+  fi
+
+  dot_checkbin         \
+    bin_cut "$bin_cut" \
+    bin_md5sum "$bin_md5sum"
+
+  hash=$(echo "$repo" | $bin_md5sum - | $bin_cut -d\  -f1)
+  dotroot=~/.dot/repositories/$hash
+  stgroot=$($bin_mktemp -d)
+
+  for d in "$stgroot" "$root"
+  do
+    if [ ! -d "$d" ]
+    then
+      dot_dye "directory not found: $d"
+    fi
+  done
+}
+
+dot_finalize ()
+{
+  local rm
+  rm=$bin_rm
+
+  if command -v $bin_rm >/dev/null
+  then
+    rm=$bin_rm
+  else
+    rm=/bin/rm
+  fi
+
+  test -d "$stgroot" && $rm -r -f "$stgroot"
+}
+
+dot_fetch ()
+{
+  dot_log_1 "cloning : $repo"
+  dot_checkbin         \
+    bin_git "$bin_git" \
+    bin_env "$bin_env" \
+    bin_rm "$bin_rm"
+  
+  if [ -d "$dotroot" ]
+  then
+    dot_log_2 "using git pull"               && \
+    (cd "$dotroot"                           && \
+       $bin_git pull --ff-only origin master && \
+       $bin_git submodule init               && \
+       $bin_git submodule update
+    ) || $bin_rm -r -f "$dotroot"
+  fi
+
+  if [ ! -d "$dotroot" ]
+  then
+    dot_log_2 "using git clone"            && \
+    $bin_git clone "$repo" "$dotroot"      && \
+    (cd "$dotroot"                         && \
+       $bin_git submodule init             && \
+       $bin_git submodule update)
+  fi
+
+  if [ ! -d "$dotroot" ]
+  then
+    dot_dye "directory not found: $dotroot"
+  fi
+}
+
+dot_lsmod_1 ()
+{
+  local topdir
+  topdir=$1
+
+  dot_checkbin            \
+    bin_find "$bin_find"  \
+    bin_dirname "$bin_dirname"
+
+  $bin_find -L "$topdir" -wholename "$dotroot/modules/*/dist" -exec "$bin_dirname" \{\} \;
+}
+
+dot_lsmod ()
+{
+  if [ -n "$bundle" ]
+  then
+    for b in $bundle
+    do
+      dot_lsmod_1 "$dotroot/bundles/$b"
+    done
+  fi
+
+  if [ -n "$module" ]
+  then
+    for m in $module
+    do
+      dot_lsmod_1 "$dotroot/modules/$m"
+    done
+  fi
+}
+
+dot_run_hook () {
+  local mod hook fakeroot
+  mod=$1
+  hook=$2
+  fakeroot=$3
+
+  if [ -f "$mod/hook/$hook" ]
+  then
+    dot_log_2 "running hook: $hook"
+    if ! (cd $mod && $bin_env dot_mod=$mod    \
+                              dot_hook=$hook  \
+                              dot_root=$fakeroot "$mod/hook/$hook")
+    then
+      dot_dye "$mod/hook/$hook: failure"
+    fi
+  fi
+}
+
+dot_stage () 
+{
+  dot_checkbin bin_tar "$bin_tar"
+
+  dot_log_1 "stgmods : $stgroot"
+
+  dot_lsmod | while read -r module
+  do
+    modname=${module#$dotroot}
+    dot_log_2 "staging ${modname#/modules}"
+
+    dot_run_hook "$module" pre "$stgroot"
+
+    if [ -d "$module/dist" ]
+    then
+      (cd "$module/dist"; $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot" -x -v -f - | dot_log_3
+    fi
+
+    dot_run_hook "$module" post "$stgroot"
+  done
+}
+
+dot_install () 
+{
+  dot_log_1 "insmods : $root"
+
+  if dot_dryrun_mode
+  then
+    dot_quit <<EOF
+Refusing to install [dryrun]
+
+The files where staged into:
+  * $stgroot
+
+Remember removing that directory when you are done
+EOF
+  fi
+
+  dot_checkbin             \
+    bin_find "$bin_find"   \
+    bin_rm   "$bin_rm"
+
+  for top in $($bin_find "$stgroot" -mindepth 1 -maxdepth 1 -type d)
+  do
+    top=${top#$stgroot/}
+    dot_log_2 "removing $root/$top"
+    "removing $root/$top"
+    $bin_rm -r -v -f "$root/$top" | dot_log_3
+  done
+  dot_log_2 "installing"
+  (cd $stgroot; $bin_tar -c -f - .) | $bin_tar -C "$root" -x -v -f - | dot_log_3
+}
+
+dot_stdout ()
+{
+  if [ -z "$1" ]
+  then
+    dot_checkbin bin_cat "$bin_cat"
+    $bin_cat >&3
+  else
+    echo "$@" >&3
+  fi
+
+  return 0
+}
+
+dot_devnull ()
+{
+  if [ -z "$1" ]
+  then
+    dot_checkbin bin_cat "$bin_cat"
+    $bin_cat >/dev/null
+  fi
+
+  return 0
+}
+
+dot_log_3 ()
+{
+  if expr "$verbosity" \> 2 >/dev/null
+  then
+    dot_stdout "$@"
+  else
+    dot_devnull "$@"
+  fi
+}
+
+dot_log_2 ()
+{
+  if expr "$verbosity" \> 1 >/dev/null
+  then
+    dot_stdout "$@"
+  else
+    dot_devnull "$@"
+  fi
+}
+
+dot_log_1 ()
+{
+  if expr "$verbosity" \> 0 >/dev/null
+  then
+    dot_stdout "$@"
+  else
+    dot_devnull "$@"
+  fi
+}
+
+dot_loadrc
+dot_loadenv "$@"
+dot_initialize
+dot_chkenv && {
+  dot_fetch
+  dot_stage
+  dot_install
+}
+dot_finalize
