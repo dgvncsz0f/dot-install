@@ -138,3 +138,8 @@ copying the files and we are done.
 .. [#] https://github.com/dgvncsz0f/dot-install/blob/v0.0.1/dot-install#L336
 .. [#] https://github.com/dgvncsz0f/dot-install/blob/v0.0.1/dot-install#L378
 .. [#] https://github.com/dgvncsz0f/dot-install/blob/v0.0.1/dot-install#L386
+
+LICENSE
+=======
+
+GPLv3
