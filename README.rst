@@ -6,21 +6,22 @@ This is a very minimalist package manager that I use to manage my dot
 files.
 
 For very long time I've been using a shell script that took care of
-installing my files. That worked really well, the only begin that
-files or configuration specific to one machine would not go to the git
-repository. In my case, I have my personal notebook, a workstation at
-the office and a dozen of servers that I deploy my dot files to.
+installing my files. That worked really well, the only problem begin
+that files or configuration specific to one machine would not go to
+the git repository. I have a personal notebook, a workstation at the
+work and a dozen of servers that I deploy my dot files to.
 
-That comes my motivation: deploying my dot files to heterogeneous
+From that comes my motivation: deploying dot files to heterogeneous
 environments and making sure everything is in the git repository.
 
-This project attempt to solve this problem using *bundles*. Things are
-organized in modules and bundles group those modules. That way I could
-create a bundle for my machine at the office and another one for my
-personal notebook, or just install a specific module into a server.
+This project attempt to solve this problem using *bundles* and
+*modules*. Things are organized in modules and bundles group those
+modules. That way I could create a bundle for my machine at the office
+and another one for my personal notebook, or just install a specific
+module into a server.
 
 The good thing is that by solving this problem I also solved a small
-inconvenient. Sharing was not possible with the previous scheme: the
+inconvenient. Sharing was not possible with the previous scheme as the
 script would overwrite everything with no mercy. Obviously that was
 not the driver for writing this, but it may very well suits others.
 
@@ -30,19 +31,20 @@ Running
 Given you have a git repository that follows the *dot layout* (as
 described in this document)::
 
-  $ dot-install bundle=foobar
+  $ dot-install bundle=foo
 
-This will install the *foobar* bundle. If you want just a module:
+This will install the *foobar* bundle. If you want just a module
+instead:
 
-  $ dot-install bundle=my/module
+  $ dot-install module=bar
 
 To use a different repository:
 
   $ dot-install bundle=foobar repo=git://foobar.git
 
-You may also combine the two options. If you invoke `dot-install`
-without arguments, it will ask interactively for a repository and a
-bundle to install:
+You may also combine the two options [*bundle* and *module*]. If you
+invoke `dot-install` with no arguments, it will ask you for
+a *repository* and a *bundle* interactively:
 
   $ dot-install
   repository: ...
@@ -60,7 +62,6 @@ The repository this script is able to deal with must have the
 following structure::
 
    repository
-   +- .git
    +- modules
       +- ... 
    +- bundles
@@ -69,26 +70,25 @@ following structure::
 Modules
 -------
 
-Modules are directories with an `dist` directory inside and an
-optional `hook` directory. That is the only requirement, and other
-than this there are no requirements.
+Modules are directories with a `dist` directory inside and an optional
+`hook` directory. That is the only requirement.
 
 The `dist` directory holds the files that will get installed by that
 module, with the exact same path. If there are *symlinks*, they will
-be followed and the other end of the *symlink* will be installed. In
-other words, if you need *symlink* you have to use the `pre`/`post`
-hook.
+be followed. In other words, if you need *symlink* you have to use the
+`pre`/`post` hooks.
 
-The `hook` directories may contain a `pre` and/or `post` file. This is
-must be a file with a shebang and have the execution permission bit
-set. That means you can use python for instance to create a
-`pre`/`post` hook.
+The `hook` directory may contain a `pre` and/or `post` file. This must
+be a regular unix script, with the usual shebang at the beginning. It
+also must have the execution permission bits set. That means you can
+use any script language that is available on the target during the
+install.
 
 Bundles
 -------
 
 Bundles simply group modules. I usually create *symlinks* for the
-modules I want, but you may have modules inside them as well.
+modules I want, but you may have modules inside as well.
 
 How it works
 ============
@@ -115,16 +115,16 @@ can `dot-install` from multiple repositories, one at a time.
 At this phase, it will also initialize/update any git submodule
 defined [something I use a lot].
 
-Past fetching the files, the modules have been figured, files will be
-staged into a temporary location [#]_. The actual directory is defined
-by the `mktemp` program.
+Past fetching the files and the modules have been figured, files will
+be staged into a temporary location [#]_. The actual directory is
+defined by the `mktemp` program.
 
-The pre/post hooks are invokes in this stage. At this point nothing
+The pre/post hooks are invoked in this stage. At this point nothing
 have been changed, but everything that will be done is available at
 the staging directory.
 
-And then comes the installing phase. In order two install, two
-operations are performed:
+And then comes the installing phase. Here, two operations are
+performed:
 
 1. Remove the directories that will be modified [#]_;
 
