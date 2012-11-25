@@ -2,7 +2,7 @@
 
 self=$0
 
-repo=git://github.com/dgvncsz0f/dot.git
+repo=
 root=~
 rcfile=~/.dot-install.rc
 verbosity=2
@@ -152,10 +152,8 @@ dot_loadenv ()
     done
   done
 
-  if [ -z "$bundle" -a -z "$module" ]
-  then
-    read -p "bundle to install: " bundle
-  fi
+  [ -z "$repo" ]                   && read -p "repository: " repo
+  [ -z "$bundle" -a -z "$module" ] && read -p "bundle: " bundle
 }
 
 dot_chkenv ()
