@@ -50,6 +50,8 @@ bin_find=${bin_find:-find}
 bin_dirname=${bin_dirname:-dirname}
 bin_rm=${bin_rm:-rm}
 bin_tar=${bin_tar:-tar}
+bin_sort=${bin_sort:-sort}
+bin_uniq=${bin_uniq:-uniq}
 
 exec 3>&1
 
@@ -133,7 +135,7 @@ dot_env_set ()
   expr="$2"
   size=$($bin_expr length $key + 2)
 
-  if $bin_expr match "$expr" "^$key=[a-z0-9_@/\.\-]*$" >/dev/null
+  if $bin_expr match "$expr" "^$key=[:a-z0-9_@/\.\-]*$" >/dev/null
   then
     val=$(echo -n "$expr" | $bin_cut -c $size-)
     eval $key=\"$val\"
@@ -318,7 +320,7 @@ dot_lsmod_1 ()
     bin_find "$bin_find"  \
     bin_dirname "$bin_dirname"
 
-  $bin_find -L "$topdir" -wholename "$dotroot/modules/*/dist" -exec "$bin_dirname" \{\} \;
+  $bin_find -L "$topdir" -wholename "$dotroot/*/dist" -exec "$bin_dirname" \{\} \;
 }
 
 dot_lsmod ()
@@ -360,11 +362,14 @@ dot_run_hook () {
 
 dot_stage () 
 {
-  dot_checkbin bin_tar "$bin_tar"
+  dot_checkbin           \
+    bin_tar "$bin_tar"   \
+    bin_sort "$bin_sort" \
+    bin_uniq "$bin_uniq"
 
   dot_log_1 "stgmods : $stgroot"
 
-  dot_lsmod | while read -r module
+  dot_lsmod $bin_sort | $bin_uniq | while read -r module
   do
     modname=${module#$dotroot}
     dot_log_2 "staging ${modname#/modules}"
