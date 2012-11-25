@@ -367,7 +367,15 @@ dot_stage ()
     bin_sort "$bin_sort" \
     bin_uniq "$bin_uniq"
 
-  dot_log_1 "stgmods : $stgroot"
+  if [ -n "$bundle" -a -n "$module" ]
+  then
+    dot_log_1 "stgmods : $bundle+$module@$stgroot"
+  elif [ -n "$bundle" ]
+  then
+    dot_log_1 "stgmods : $bundle@$stgroot"
+  else
+    dot_log_1 "stgmods : +$module@$stgroot"
+  fi
 
   dot_lsmod $bin_sort | $bin_uniq | while read -r module
   do
