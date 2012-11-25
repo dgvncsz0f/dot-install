@@ -84,6 +84,23 @@ also must have the execution permission bits set. That means you can
 use any script language that is available on the target during the
 install.
 
+Hooks
+=====
+
+As stated above, any script file will do. There are three environment
+variables defined:
+
+:dot_root: The location where files will be installed. If the hook
+            itself needs to create/modify any file it must relative to
+            this directory;
+
+:dot_mod: The absolute path of the module directory;
+
+:dot_hook: Either `pre` or `post`;
+
+The current directory will be set to `$dot_root` prior invoking the
+script.
+
 Bundles
 -------
 
