@@ -29,7 +29,7 @@ self=$0
 
 repo=
 root=~
-rcfile=~/.dot-install.rc
+rcfile=~/.dot/rc
 verbosity=2
 logfile=/dev/null
 bundle=
