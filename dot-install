@@ -52,6 +52,9 @@ bin_rm=${bin_rm:-rm}
 bin_tar=${bin_tar:-tar}
 bin_sort=${bin_sort:-sort}
 bin_uniq=${bin_uniq:-uniq}
+bin_touch=${bin_touch:-touch}
+
+dot_install_mark=".dot-install.mark"
 
 exec 3>&1
 
@@ -246,8 +249,8 @@ dot_initialize ()
     exec >$logfile 2>&1
   fi
 
-  dot_checkbin         \
-    bin_cut "$bin_cut" \
+  dot_checkbin             \
+    bin_cut "$bin_cut"     \
     bin_md5sum "$bin_md5sum"
 
   hash=$(echo "$repo" | $bin_md5sum - | $bin_cut -d\  -f1)
@@ -367,7 +370,8 @@ dot_stage ()
   dot_checkbin           \
     bin_tar "$bin_tar"   \
     bin_sort "$bin_sort" \
-    bin_uniq "$bin_uniq"
+    bin_uniq "$bin_uniq" \
+    bin_touch "$bin_touch"
 
   if [ -n "$bundle" -a -n "$module" ]
   then
@@ -394,6 +398,8 @@ dot_stage ()
       dot_run_hook "$module" post "$stgroot"
     }
   done
+
+  $bin_touch "$stgroot/$dot_install_mark"
 }
 
 dot_install () 
@@ -416,15 +422,21 @@ EOF
     bin_find "$bin_find"   \
     bin_rm   "$bin_rm"
 
-  for top in $($bin_find "$stgroot" -mindepth 1 -maxdepth 1 -type d)
-  do
-    top=${top#$stgroot/}
-    dot_log_2 "removing $root/$top"
-    "removing $root/$top"
-    $bin_rm -r -v -f "$root/$top" | dot_log_3
-  done
-  dot_log_2 "installing"
-  (cd $stgroot; $bin_tar -c -f - .) | $bin_tar -C "$root" -x -v -f - | dot_log_3
+  if [ -d "$stgroot" -a -f "$stgroot/$dot_install_mark" ]
+  then
+    $bin_rm -f "$stgroot/$dot_install_mark"
+    for top in $($bin_find "$stgroot" -mindepth 1 -maxdepth 1 -type d)
+    do
+      top=${top#$stgroot/}
+      dot_log_2 "removing $root/$top"
+      "removing $root/$top"
+      $bin_rm -r -v -f "$root/$top" | dot_log_3
+    done
+    dot_log_2 "installing"
+    (cd $stgroot; $bin_tar -c -f - .) | $bin_tar -C "$root" -x -v -f - | dot_log_3
+  else
+    dot_log_1 "refusing to install using this stgroot: $stgroot"
+  fi
 }
 
 dot_stdout ()
