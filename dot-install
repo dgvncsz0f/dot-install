@@ -255,7 +255,7 @@ dot_initialize ()
 
   hash=$(echo "$repo" | $bin_md5sum - | $bin_cut -d\  -f1)
   dotroot=~/.dot/repositories/$hash
-  stgroot=$($bin_mktemp -d)
+  stgroot=$($bin_mktemp -d /tmp/dot-install.XXX)
 
   for d in "$stgroot" "$root"
   do
