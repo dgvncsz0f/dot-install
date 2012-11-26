@@ -392,7 +392,7 @@ dot_stage ()
 
       if [ -d "$module/dist" ]
       then
-        (cd "$module/dist"; $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot" -x -v -f - | dot_log_3
+        (cd "$module/dist" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot" -x -v -f - | dot_log_3
       fi
 
       dot_run_hook "$module" post "$stgroot"
@@ -433,7 +433,7 @@ EOF
       $bin_rm -r -v -f "$root/$top" | dot_log_3
     done
     dot_log_2 "installing"
-    (cd $stgroot; $bin_tar -c -f - .) | $bin_tar -C "$root" -x -v -f - | dot_log_3
+    (cd $stgroot && $bin_tar -c -f - .) | $bin_tar -C "$root" -x -v -f - | dot_log_3
   else
     dot_log_1 "refusing to install using this stgroot: $stgroot"
   fi
