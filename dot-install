@@ -136,7 +136,7 @@ dot_env_set ()
 
   key="$1"
   expr="$2"
-  size=$($bin_expr length $key + 2)
+  size=$($bin_expr ${#key} + 2)
 
   if $bin_expr "$expr" : "^$key=[:a-z0-9_@/\.\-]*$" >/dev/null
   then
