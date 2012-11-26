@@ -138,7 +138,7 @@ dot_env_set ()
   expr="$2"
   size=$($bin_expr ${#key} + 2)
 
-  if $bin_expr "$expr" : "^$key=[:a-z0-9_@/\.\-]*$" >/dev/null
+  if $bin_expr "$expr" : "^$key=[:a-zA-Z0-9_@/\.\-]*$" >/dev/null
   then
     val=$(echo -n "$expr" | $bin_cut -c $size-)
     eval $key=\"$val\"
