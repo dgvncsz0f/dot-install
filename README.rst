@@ -101,6 +101,9 @@ variables defined:
 The current directory will be set to `$dot_root` prior invoking the
 script.
 
+One last important thing about hooks. If the exit status of the *pre*
+script is non zero, the module is not installed.
+
 Bundles
 -------
 
