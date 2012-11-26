@@ -355,9 +355,11 @@ dot_run_hook () {
                               dot_hook=$hook  \
                               dot_root=$fakeroot "$mod/hook/$hook")
     then
-      dot_dye "$mod/hook/$hook: failure"
+      dot_stdout "$mod/hook/$hook: failure"
+      return 1
     fi
   fi
+  return 0
 }
 
 dot_stage () 
@@ -382,14 +384,15 @@ dot_stage ()
     modname=${module#$dotroot}
     dot_log_2 "staging ${modname#/modules}"
 
-    dot_run_hook "$module" pre "$stgroot"
+    dot_run_hook "$module" pre "$stgroot" && {
 
-    if [ -d "$module/dist" ]
-    then
-      (cd "$module/dist"; $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot" -x -v -f - | dot_log_3
-    fi
+      if [ -d "$module/dist" ]
+      then
+        (cd "$module/dist"; $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot" -x -v -f - | dot_log_3
+      fi
 
-    dot_run_hook "$module" post "$stgroot"
+      dot_run_hook "$module" post "$stgroot"
+    }
   done
 }
 
