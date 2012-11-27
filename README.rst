@@ -84,6 +84,15 @@ also must have the execution permission bits set. That means you can
 use any script language that is available on the target during the
 install.
 
+Lastly, there is a `save` file, which tells the installer which files
+to backup and restore after installing the modules. One file name per
+line. Good candidates are auto generated files, like
+.ssh/known_hosts. Example::
+
+  $ cat save
+  /.ssh/known_hosts
+  /.ssh/id_rsa
+
 Hooks
 =====
 
@@ -116,13 +125,17 @@ How it works
 `dot-install` is a shell script. This, hopefully, make it easier to
 run it to deploy files to servers and fresh new machines.
 
-From a birds-eye view, the scripts performs three functions:
+From a birds-eye view, the scripts performs five functions:
 
 1. clone the git repository;
 
 2. stage the files;
 
-3. install the files;
+3. backup files that modules decide to keep;
+
+4. install the files;
+
+5. restore the backup;
 
 The first stage will clone the git repository [#]_ into the following
 directory::
@@ -143,6 +156,9 @@ The pre/post hooks are invoked in this stage. At this point nothing
 have been changed, but everything that will be done is available at
 the staging directory.
 
+Now the script will look for save files and copy all files that need
+not to be kept intact. They will be restored later, in the end [#]_.
+
 And then comes the installing phase. Here, two operations are
 performed:
 
@@ -152,12 +168,17 @@ performed:
 
 The remove step is necessary as the script don't keep track of what
 have been installed. After this is done, is it just a matter of
-copying the files and we are done.
+copying the files into the right directories.
 
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/v0.0.1/dot-install#L254
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/v0.0.1/dot-install#L336
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/v0.0.1/dot-install#L378
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/v0.0.1/dot-install#L386
+Finally, it will retore any files that have been put into the
+backup. Jobs done [#]_!
+
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L303
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L388
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L425
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L485
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L498
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L451
 
 LICENSE
 =======

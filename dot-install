@@ -238,6 +238,7 @@ EOF
   dot_log_2 "verbosity: $verbosity"
   dot_log_2 "  logfile: $logfile"
   dot_log_2 "  dotroot: $dotroot"
+  dot_log_2 "   backup: $dotbckp"
   dot_log_2 "  stgroot: $stgroot"
   dot_log_2 "   dryrun: $dryrun"
   dot_log_2 "============================================================================"
@@ -260,7 +261,8 @@ dot_initialize ()
 
   hash=$(echo "$repo" | $bin_md5sum - | $bin_cut -d\  -f1)
   dotroot=~/.dot/repositories/$hash
-  stgroot=$($bin_mktemp -d /tmp/dot-install.XXX)
+  stgroot=$($bin_mktemp -d /tmp/dot-install.XXXXXXX)
+  dotbckp=$($bin_mktemp /tmp/dot-backup.XXXXXXX)
 
   for d in "$stgroot" "$root"
   do
@@ -269,6 +271,11 @@ dot_initialize ()
       dot_dye "directory not found: $d"
     fi
   done
+
+  if [ ! -r "$dotbckp" ]
+  then
+    dot_dye "could not initialize backup file: $dotbckp"
+  fi
 
   if [ -n "$nopull" ]
   then
@@ -290,6 +297,7 @@ dot_finalize ()
   fi
 
   test -d "$stgroot" && $rm -r -f "$stgroot"
+  test -f "$dotbckp" && $rm -f "$dotbckp"
 }
 
 dot_fetch ()
@@ -310,7 +318,6 @@ dot_fetch ()
        $bin_git submodule update
     ) || $bin_rm -r -f "$dotroot"
   fi
-
 
   if [ ! -d "$dotroot" ]
   then
@@ -396,23 +403,58 @@ dot_stage ()
     dot_log_1 "stgmods : +$module@$stgroot"
   fi
 
-  dot_lsmod $bin_sort | $bin_uniq | while read -r module
+  for mod in $(dot_lsmod | $bin_sort | $bin_uniq)
   do
-    modname=${module#$dotroot}
+    modname=${mod#$dotroot}
     dot_log_2 "staging ${modname#/modules}"
 
-    dot_run_hook "$module" pre "$stgroot" && {
+    dot_run_hook "$mod" pre "$stgroot" && {
 
-      if [ -d "$module/dist" ]
+      if [ -d "$mod/dist" ]
       then
-        (cd "$module/dist" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot" -x -v -f - | dot_log_3
+        (cd "$mod/dist" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot" -x -v -f - | dot_log_3
       fi
 
-      dot_run_hook "$module" post "$stgroot"
+      dot_run_hook "$mod" post "$stgroot"
     }
   done
 
   $bin_touch "$stgroot/$dot_install_mark"
+}
+
+dot_bck_save ()
+{
+  local backup
+
+  dot_checkbin         \
+    bin_cat "$bin_cat" \
+    bin_tar "$bin_tar"
+
+  dot_log_1 "bcksave : $dotbckp"
+  for m in $(dot_lsmod)
+  do
+    if [ -f "$m/save" ]
+    then
+      dot_log_2 "${m#$dotroot}"
+      for f in $($bin_cat "$m/save")
+      do
+        f=${f#/}
+        if [ -f "$root/$f" ]
+        then
+          (cd $root && $bin_tar -u -v -f "$dotbckp" "$f" | dot_log_2)
+        fi
+      done
+    fi
+  done
+}
+
+dot_bck_load ()
+{
+  dot_log_1 "bckload : $dotbckp"
+  if [ -r "$dotbckp" -a -s "$dotbckp" ]
+  then
+    $bin_tar -C "$root" -x -v -f "$dotbckp" | dot_log_2
+  fi
 }
 
 dot_install () 
@@ -427,7 +469,10 @@ Refusing to install [dryrun]
 The files where staged into:
   * $stgroot
 
-Remember removing that directory when you are done
+The files that will be preserved:
+  * $dotbckp
+
+Remember removing them when you are done!
 EOF
   fi
 
@@ -437,6 +482,7 @@ EOF
 
   if [ -d "$stgroot" -a -f "$stgroot/$dot_install_mark" ]
   then
+    # cleanup
     $bin_rm -f "$stgroot/$dot_install_mark"
     for top in $($bin_find "$stgroot" -mindepth 1 -maxdepth 1 -type d)
     do
@@ -448,6 +494,8 @@ EOF
         $bin_rm -r -v -f "$root/$top" | dot_log_3
       fi
     done
+
+    # install
     dot_log_2 "installing"
     (cd $stgroot && $bin_tar -c -f - .) | $bin_tar -C "$root" -x -v -f - | dot_log_3
   else
@@ -515,6 +563,8 @@ dot_initialize
 dot_chkenv && {
   dot_fetch
   dot_stage
+  dot_bck_save
   dot_install
+  dot_bck_load
 }
 dot_finalize
