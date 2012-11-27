@@ -36,6 +36,7 @@ bundle=
 module=
 nopull=
 force=
+purge=false
 
 bin_mktemp=${bin_mktemp:-mktemp}
 bin_unlink=${bin_unlink:-unlink}
@@ -199,7 +200,7 @@ dot_loadenv ()
 
   for expr in "$@"
   do
-    for key in verbosity rcfile repo root logfile dryrun nopull force
+    for key in verbosity rcfile repo root logfile dryrun nopull force purge
     do
       dot_env_set $key "$expr"
     done
@@ -233,6 +234,7 @@ dot_chkenv ()
   dot_log_2 "   nopull: $nopull"
   dot_log_2 "    force: $force"
   dot_log_2 "   dryrun: $dryrun"
+  dot_log_2 "    purge: $purge"
   dot_log_2 "----------------------------------------------------------------------------"
   dot_log_2 "   backup: $dotbckp"
   dot_log_2 "  stgroot: $stgroot"
@@ -339,30 +341,33 @@ dot_lsmod_1 ()
   local topdir
   topdir=$1
 
-  dot_ensurebin           \
-    bin_find "$bin_find"  \
+  dot_ensurebin          \
+    bin_find "$bin_find" \
+    bin_sort "$bin_sort" \
+    bin_uniq "$bin_uniq" \
     bin_dirname "$bin_dirname"
 
-  $bin_find -L "$topdir" -wholename "$dotroot/*/dist" -exec "$bin_dirname" \{\} \;
+  $bin_find -L "$topdir" \( -wholename "$dotroot/*/dist" -o -wholename "$dotroot/*/dist-root" \) -exec "$bin_dirname" \{\} \;
 }
 
 dot_lsmod ()
 {
-  if [ -n "$bundle" ]
-  then
-    for b in $bundle
-    do
-      dot_lsmod_1 "$dotroot/bundles/$b"
-    done
-  fi
+  { if [ -n "$bundle" ]
+    then
+      for b in $bundle
+      do
+        dot_lsmod_1 "$dotroot/bundles/$b"
+      done
+    fi
 
-  if [ -n "$module" ]
-  then
-    for m in $module
-    do
-      dot_lsmod_1 "$dotroot/modules/$m"
-    done
-  fi
+    if [ -n "$module" ]
+    then
+      for m in $module
+      do
+        dot_lsmod_1 "$dotroot/modules/$m"
+      done
+    fi
+  } | $bin_sort | $bin_uniq
 }
 
 dot_run_hook () {
@@ -389,8 +394,6 @@ dot_stage ()
 {
   dot_ensurebin          \
     bin_tar "$bin_tar"   \
-    bin_sort "$bin_sort" \
-    bin_uniq "$bin_uniq" \
     bin_touch "$bin_touch"
 
   if [ -n "$bundle" -a -n "$module" ]
@@ -403,7 +406,7 @@ dot_stage ()
     dot_log_1 "stgmods : +{$module} ~> $stgroot"
   fi
 
-  for mod in $(dot_lsmod | $bin_sort | $bin_uniq)
+  for mod in $(dot_lsmod)
   do
     modname=${mod#$dotroot}
     dot_log_2 "staging ${modname#/modules}"
@@ -498,15 +501,19 @@ EOF
   if [ -d "$stgroot" -a -f "$stgroot/$dot_install_mark" ]
   then
     # cleanup
-    for top in $($bin_find "$stgroot/dist" -mindepth 1 -maxdepth 1 -type d)
-    do
-      top=${top#$stgroot/dist/}
-      dot_log_2 "removing $root/$top"
-      if [ -d "$root/$top" ]
-      then
-        $bin_rm -r -v -f "$root/$top" | dot_log_3
-      fi
-    done
+    if [ "$purge" = "true" ]
+    then
+      for top in $($bin_find "$stgroot/dist" -mindepth 1 -maxdepth 1 -type d)
+      do
+        top=${top#$stgroot/dist/}
+        dot_log_2 "removing $root/$top"
+        dot_stdout "$root/$top"
+        if [ -d "$root/$top" ]
+        then
+          $bin_rm -r -v -f "$root/$top" | dot_log_3
+        fi
+      done
+    fi
 
     # install
     dot_log_2 "installing (dist)"
@@ -615,6 +622,9 @@ Other OPTIONS:
 
      nopull If set it never use /git pull/ and always perform /git
             clone/.
+
+      purge Removes the top-level directories that will be installed
+            under $root prior installing the files [default: false]
 
       force When using dist-root, a confirmation is asked before every
             action. If you don't want this, set force=true
