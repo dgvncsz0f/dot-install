@@ -173,12 +173,12 @@ copying the files into the right directories.
 Finally, it will retore any files that have been put into the
 backup. Jobs done [#]_!
 
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L303
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L388
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L425
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L485
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L498
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L451
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L305
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L390
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L427
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L487
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L499
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L453
 
 LICENSE
 =======
