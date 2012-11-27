@@ -91,7 +91,7 @@ line. Good candidates are auto generated files, like
 
   $ cat save
   /.ssh/known_hosts
-  /.ssh/id_rsa
+  /.emacs.d/bookmarks
 
 Hooks
 =====
