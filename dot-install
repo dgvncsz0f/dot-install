@@ -210,17 +210,15 @@ dot_loadenv ()
     done
   done
 
-  [ -z "$repo" ]                   && read -p "repository: " repo
+  [ -z "$repo" ]                   && read -p "repo: " repo
+  [ -z "$bundle" -a -z "$module" ] && read -p "module: " module
   [ -z "$bundle" -a -z "$module" ] && read -p "bundle: " bundle
 }
 
 dot_chkenv ()
 {
-  if [ -z "$bundle" -a -z "$module" ]
-  then
-    dot_help
-    return 1
-  fi
+  [ -z "$repo" ]                   && dot_quit "repo is required"
+  [ -z "$bundle" -a -z "$module" ] && dot_quit "either bundle or module (or both) is required"
 
   dot_log_2 "dot-install"
   dot_log_2 "============================================================================"
@@ -651,6 +649,8 @@ EOF
 }
 
 trap dot_trap_int INT
+
+[ "$1" = "help" -o "$1" = "-help" -o "$1" = "--help" -o "$1" = "-h" ] && dot_help
 
 dot_loadrc
 dot_loadenv "$@"
