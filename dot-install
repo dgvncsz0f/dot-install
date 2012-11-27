@@ -35,10 +35,12 @@ logfile=/dev/null
 bundle=
 module=
 nopull=
+force=
 
 bin_mktemp=${bin_mktemp:-mktemp}
 bin_unlink=${bin_unlink:-unlink}
 bin_md5sum=${bin_md5sum:-md5sum}
+bin_mkdir=${bin_mkdir:-mkdir}
 bin_cat=${bin_cat:-cat}
 bin_cut=${bin_cut:-cut}
 bin_ln=${bin_ln:-ln}
@@ -50,6 +52,7 @@ bin_env=${bin_env:-env}
 bin_find=${bin_find:-find}
 bin_dirname=${bin_dirname:-dirname}
 bin_rm=${bin_rm:-rm}
+bin_sudo=${bin_sudo:-sudo}
 bin_tar=${bin_tar:-tar}
 bin_sort=${bin_sort:-sort}
 bin_uniq=${bin_uniq:-uniq}
@@ -93,26 +96,7 @@ dot_loadrc ()
   test -f "$rcfile" && . "$rcfile"
 }
 
-dot_checkbin_abort_with ()
-{
-  local var prg
-  var=$1
-  prg=$2
-
-  dot_dye <<EOF 
-Could not find \`$prg' program. You may provide the right location for
-this using:
-
-  $ env $var=/path/to/file $self ...
-
-Additionaly, you may create or edit a file named $rcfile defining this
-variable (shell syntax), as follows:
-
-  $ echo $var=/path/to/file >>$rcfile
-EOF
-}
-
-dot_checkbin ()
+dot_ensurebin ()
 {
   local var prg
 
@@ -123,17 +107,59 @@ dot_checkbin ()
 
     if ! command -V "$prg" 2>/dev/null >/dev/null
     then
-      dot_checkbin_abort_with $var "$prg"
+      dot_dye <<EOF 
+Could not find \`$prg' program. You may provide the right location for
+this using:
+
+  $ env $var=/path/to/file $self ...
+
+Additionaly, you may create or edit a file named $rcfile defining this
+variable (shell syntax), as follows:
+
+  $ echo $var=/path/to/file >>$rcfile
+EOF
     fi
     shift 2
   done
+}
+
+dot_checkbin ()
+{
+  local var prg res
+  res=0
+  while [ "$#" -gt 0 ]
+  do
+    var=$1
+    prg=$2
+    msg=$3
+
+    if ! command -V "$prg" 2>/dev/null >/dev/null
+    then
+      res=1
+      dot_stdout <<EOF 
+$msg
+
+You may provide the right location for this using:
+
+  $ env $var=/path/to/file $self ...
+
+Additionaly, you may create or edit a file named $rcfile defining this
+variable (shell syntax), as follows:
+
+  $ echo $var=/path/to/file >>$rcfile
+EOF
+    fi
+    shift 3
+  done
+
+  return $res
 }
 
 dot_env_set ()
 {
   local key expr size val
 
-  dot_checkbin bin_expr "$bin_expr"
+  dot_ensurebin bin_expr "$bin_expr"
 
   key="$1"
   expr="$2"
@@ -150,7 +176,7 @@ dot_env_add ()
 {
   local key expr cval
 
-  dot_checkbin bin_expr "$bin_expr"
+  dot_ensurebin bin_expr "$bin_expr"
 
   key="$1"
   expr="$2"
@@ -172,7 +198,7 @@ dot_loadenv ()
 
   for expr in "$@"
   do
-    for key in verbosity rcfile repo root logfile dryrun
+    for key in verbosity rcfile repo root logfile dryrun nopull force
     do
       dot_env_set $key "$expr"
     done
@@ -195,7 +221,11 @@ dot_chkenv ()
 Usage: $self [OPTION]...
 This script will download a git repository, namely a dot repository,
 and will install all modules that match a given bundle or module
-specification
+specification.
+
+Refer to
+https://github.com/dgvncsz0f/dot-install/blob/stable/README.rst for
+information about the repository layout.
 
 Mandatory OPTIONS:
  bundle  The bundle to install. May be used in conjunction with module.
@@ -221,6 +251,9 @@ Other OPTIONS:
      nopull If set it never use /git pull/ and always perform /git
             clone/.
 
+      force When using dist-root, a confirmation is asked before every
+            action. If you don't want this, set force=true
+
      dryrun If defined, it only stages files, but do not install
             them. This is usually for development purposes, but you
             may use to double check the files that will be installed.
@@ -239,6 +272,7 @@ EOF
   dot_log_2 "  logfile: $logfile"
   dot_log_2 "  dotroot: $dotroot"
   dot_log_2 "   nopull: $nopull"
+  dot_log_2 "    force: $force"
   dot_log_2 "   dryrun: $dryrun"
   dot_log_2 "----------------------------------------------------------------------------"
   dot_log_2 "   backup: $dotbckp"
@@ -257,8 +291,9 @@ dot_initialize ()
     exec >$logfile 2>&1
   fi
 
-  dot_checkbin             \
+  dot_ensurebin            \
     bin_cut "$bin_cut"     \
+    bin_mkdir "$bin_mkdir" \
     bin_md5sum "$bin_md5sum"
 
   hash=$(echo "$repo" | $bin_md5sum - | $bin_cut -d\  -f1)
@@ -273,6 +308,9 @@ dot_initialize ()
       dot_dye "directory not found: $d"
     fi
   done
+
+  $bin_mkdir "$stgroot/dist"
+  $bin_mkdir "$stgroot/root"
 
   if [ ! -r "$dotbckp" ]
   then
@@ -305,7 +343,7 @@ dot_finalize ()
 dot_fetch ()
 {
   dot_log_1 "cloning : $repo"
-  dot_checkbin         \
+  dot_ensurebin        \
     bin_git "$bin_git" \
     bin_env "$bin_env" \
     bin_rm "$bin_rm"
@@ -341,7 +379,7 @@ dot_lsmod_1 ()
   local topdir
   topdir=$1
 
-  dot_checkbin            \
+  dot_ensurebin           \
     bin_find "$bin_find"  \
     bin_dirname "$bin_dirname"
 
@@ -389,7 +427,7 @@ dot_run_hook () {
 
 dot_stage () 
 {
-  dot_checkbin           \
+  dot_ensurebin          \
     bin_tar "$bin_tar"   \
     bin_sort "$bin_sort" \
     bin_uniq "$bin_uniq" \
@@ -410,14 +448,19 @@ dot_stage ()
     modname=${mod#$dotroot}
     dot_log_2 "staging ${modname#/modules}"
 
-    dot_run_hook "$mod" pre "$stgroot" && {
+    dot_run_hook "$mod" pre "$stgroot/dist" && {
 
       if [ -d "$mod/dist" ]
       then
-        (cd "$mod/dist" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot" -x -v -f - | dot_log_3
+        (cd "$mod/dist" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot/dist" -x -v -f - | dot_log_3
       fi
 
-      dot_run_hook "$mod" post "$stgroot"
+      if [ -d "$mod/dist-root" ]
+      then
+        (cd "$mod/dist-root" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot/root" -x -v -f - | dot_log_3
+      fi
+
+      dot_run_hook "$mod" post "$stgroot/dist"
     }
   done
 
@@ -428,7 +471,7 @@ dot_bck_save ()
 {
   local backup
 
-  dot_checkbin         \
+  dot_ensurebin        \
     bin_cat "$bin_cat" \
     bin_tar "$bin_tar"
 
@@ -461,6 +504,8 @@ dot_bck_load ()
 
 dot_install () 
 {
+  local has_sudo tar_args
+
   dot_log_1 "insmods : $root"
 
   if dot_dryrun_mode
@@ -478,17 +523,19 @@ Remember removing them when you are done!
 EOF
   fi
 
-  dot_checkbin             \
-    bin_find "$bin_find"   \
+  dot_ensurebin          \
+    bin_find "$bin_find" \
     bin_rm   "$bin_rm"
+
+  dot_checkbin bin_sudo "$bin_sudo" "WARNING: cant install dot-root files, sudo \`$bin_sudo' not found!"
+  has_sudo=$?
 
   if [ -d "$stgroot" -a -f "$stgroot/$dot_install_mark" ]
   then
     # cleanup
-    $bin_rm -f "$stgroot/$dot_install_mark"
-    for top in $($bin_find "$stgroot" -mindepth 1 -maxdepth 1 -type d)
+    for top in $($bin_find "$stgroot/dist" -mindepth 1 -maxdepth 1 -type d)
     do
-      top=${top#$stgroot/}
+      top=${top#$stgroot/dist/}
       dot_log_2 "removing $root/$top"
       if [ -d "$root/$top" ]
       then
@@ -497,8 +544,15 @@ EOF
     done
 
     # install
-    dot_log_2 "installing"
-    (cd $stgroot && $bin_tar -c -f - .) | $bin_tar -C "$root" -x -v -f - | dot_log_3
+    dot_log_2 "installing (dist)"
+    (cd "$stgroot/dist" && $bin_tar -c -f - .) | $bin_tar -C "$root" -x -v -f - | dot_log_3
+
+    dot_log_2 "installing (dist-root)"
+    if [ "$has_sudo" -eq 0 ]
+    then
+      [ -z "$force" ] && tar_args="-w"
+      (cd "$stgroot/root" && $bin_tar -c -f - .) | $bin_sudo $bin_tar -C / -x -f - $tar_args >&3
+    fi
   else
     dot_log_1 "refusing to install using this stgroot: $stgroot"
   fi
@@ -508,7 +562,7 @@ dot_stdout ()
 {
   if [ -z "$1" ]
   then
-    dot_checkbin bin_cat "$bin_cat"
+    dot_ensurebin bin_cat "$bin_cat"
     $bin_cat >&3
   else
     echo "$@" >&3
@@ -521,7 +575,7 @@ dot_devnull ()
 {
   if [ -z "$1" ]
   then
-    dot_checkbin bin_cat "$bin_cat"
+    dot_ensurebin bin_cat "$bin_cat"
     $bin_cat >/dev/null
   fi
 

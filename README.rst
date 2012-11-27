@@ -70,28 +70,44 @@ following structure::
 Modules
 -------
 
-Modules are directories with a `dist` directory inside and an optional
-`hook` directory. That is the only requirement.
+Modules are directories with a `dist` directory inside. That is the
+only requirement. There other special files/directories,aas follows::
 
-The `dist` directory holds the files that will get installed by that
-module, with the exact same path. If there are *symlinks*, they will
-be followed. In other words, if you need *symlink* you have to use the
-`pre`/`post` hooks.
+  module
+  +- dist
+  +- dist-root
+  +- hook
+     + pre
+     + post
+  +- save
 
-The `hook` directory may contain a `pre` and/or `post` file. This must
-be a regular unix script, with the usual shebang at the beginning. It
-also must have the execution permission bits set. That means you can
-use any script language that is available on the target during the
-install.
+:dist: This directory holds the files that will get installed by that
+       module, with the exact same path. If there are *symlinks*, they
+       will be followed. In other words, if you need *symlink* you
+       have to use the `pre`/`post` hooks.
 
-Lastly, there is a `save` file, which tells the installer which files
-to backup and restore after installing the modules. One file name per
-line. Good candidates are auto generated files, like
-.ssh/known_hosts. Example::
+:hook: The `hook` directory may contain a `pre` and/or `post`
+       file. This must be a regular unix script, with the usual
+       shebang at the beginning. It also must have the execution
+       permission bits set. That means you can use any script language
+       that is available on the target during the install.
 
-  $ cat save
-  /.ssh/known_hosts
-  /.emacs.d/bookmarks
+:save: Tells the installer which files to backup and restore after
+       installing the modules. One file name per line. Good candidates
+       are auto generated files, like .ssh/known_hosts. Example::
+
+         $ cat save
+         /.ssh/known_hosts
+         /.emacs.d/bookmarks
+
+:dist-root: Similar to dist, these files will get installed onto the
+            filesystem. The difference is that these files are not
+            relative to the `root` variable, instead they are relative
+            to the `/` directory.
+
+            This will require the `sudo` program to be available, and
+            by default it will double check each action before
+            installing the files.
 
 Hooks
 ~~~~~
@@ -170,15 +186,26 @@ The remove step is necessary as the script don't keep track of what
 have been installed. After this is done, is it just a matter of
 copying the files into the right directories.
 
+Something important to notice is that the remove step is only
+performed for files inside the `dist` directory. Files that are under
+`dist-root` are only copyied, no cleanup is done. You are not
+completely safe, though. We use `tar` to perform the copy. So if you
+are copying a file, and currently there is a directory, the directory
+will be completely removed and you will get the file instead.
+
+However, the default is to confirm every action. Using this you can
+carefully review what will be done. Lastly, if `sudo' can't be find it
+just ignores the `dist-root` directory.
+
 Finally, it will retore any files that have been put into the
 backup. Jobs done [#]_!
 
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L305
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L390
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L427
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L487
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L499
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L453
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L343
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L428
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L470
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L535
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L546
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L496
 
 LICENSE
 =======
