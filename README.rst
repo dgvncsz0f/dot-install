@@ -34,17 +34,17 @@ described in this document)::
   $ dot-install bundle=foo
 
 This will install the *foobar* bundle. If you want just a module
-instead:
+instead::
 
   $ dot-install module=bar
 
-To use a different repository:
+To use a different repository::
 
   $ dot-install bundle=foobar repo=git://foobar.git
 
 You may also combine the two options [*bundle* and *module*]. If you
 invoke `dot-install` with no arguments, it will ask you for
-a *repository* and a *bundle* interactively:
+a *repository* and a *bundle* interactively::
 
   $ dot-install
   repository: ...
