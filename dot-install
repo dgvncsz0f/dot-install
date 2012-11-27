@@ -34,6 +34,7 @@ verbosity=2
 logfile=/dev/null
 bundle=
 module=
+nopull=
 
 bin_mktemp=${bin_mktemp:-mktemp}
 bin_unlink=${bin_unlink:-unlink}
@@ -197,14 +198,15 @@ and will install all modules that match a given bundle or module
 specification
 
 Mandatory OPTIONS:
- bundle     The bundle to install. May be used in conjunction with module.
+ bundle  The bundle to install. May be used in conjunction with module.
 
- module     The module to install. May be used in conjunction with bundle.
+ module  The module to install. May be used in conjunction with bundle.
+
+   repo  The git repository to clone [default: $repo]
 
 At least one bundle or module must be given.
 
 Other OPTIONS:
-      repo  The git repository to clone [default: $repo]
 
       root  The directory to install the files [default: $root]
 
@@ -215,6 +217,9 @@ Other OPTIONS:
 
             The file that will capture the output of the commands, like
             git for instance. This is a good place to look for errors.
+
+     nopull If set it never use /git pull/ and always perform /git
+            clone/.
 
      dryrun If defined, it only stages files, but do not install
             them. This is usually for development purposes, but you
@@ -264,6 +269,12 @@ dot_initialize ()
       dot_dye "directory not found: $d"
     fi
   done
+
+  if [ -n "$nopull" ]
+  then
+    dot_log2 "wiping out $dotroot"
+    [ -d "$dotroot" ] && $bin_rm -r -f "$dotroot"
+  fi
 }
 
 dot_finalize ()
@@ -288,6 +299,7 @@ dot_fetch ()
     bin_git "$bin_git" \
     bin_env "$bin_env" \
     bin_rm "$bin_rm"
+    
   
   if [ -d "$dotroot" ]
   then
@@ -298,6 +310,7 @@ dot_fetch ()
        $bin_git submodule update
     ) || $bin_rm -r -f "$dotroot"
   fi
+
 
   if [ ! -d "$dotroot" ]
   then
@@ -430,7 +443,10 @@ EOF
       top=${top#$stgroot/}
       dot_log_2 "removing $root/$top"
       "removing $root/$top"
-      $bin_rm -r -v -f "$root/$top" | dot_log_3
+      if [ -d "$root/$top" ]
+      then
+        $bin_rm -r -v -f "$root/$top" | dot_log_3
+      fi
     done
     dot_log_2 "installing"
     (cd $stgroot && $bin_tar -c -f - .) | $bin_tar -C "$root" -x -v -f - | dot_log_3

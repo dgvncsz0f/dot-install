@@ -116,7 +116,7 @@ How it works
 `dot-install` is a shell script. This, hopefully, make it easier to
 run it to deploy files to servers and fresh new machines.
 
-From a birds-eye, the scripts performs three functions:
+From a birds-eye view, the scripts performs three functions:
 
 1. clone the git repository;
 
