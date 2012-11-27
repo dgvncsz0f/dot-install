@@ -107,7 +107,7 @@ variables defined:
 
 :dot_hook: Either `pre` or `post`;
 
-The current directory will be set to `$dot_root` prior invoking the
+The current directory will be set to `$dot_mod` prior invoking the
 script.
 
 One last important thing about hooks. If the exit status of the *pre*
