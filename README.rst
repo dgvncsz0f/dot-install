@@ -94,7 +94,7 @@ line. Good candidates are auto generated files, like
   /.emacs.d/bookmarks
 
 Hooks
-=====
+~~~~~
 
 As stated above, any script file will do. There are three environment
 variables defined:
