@@ -57,6 +57,7 @@ bin_tar=${bin_tar:-tar}
 bin_sort=${bin_sort:-sort}
 bin_uniq=${bin_uniq:-uniq}
 bin_touch=${bin_touch:-touch}
+bin_ls=${bin_ls:-ls}
 
 dot_install_mark=".dot-install.mark"
 
@@ -303,7 +304,7 @@ dot_finalize ()
 
 dot_fetch ()
 {
-  dot_log_1 "cloning : $repo"
+  dot_log_1 "cloning : $repo ~> $dotroot"
   dot_ensurebin        \
     bin_git "$bin_git" \
     bin_env "$bin_env" \
@@ -471,7 +472,6 @@ dot_bck_load ()
 dot_install ()
 {
   local has_sudo tar_args
-
   dot_log_1 "insmods : $root"
 
   if dot_dryrun_mode
@@ -491,7 +491,8 @@ EOF
 
   dot_ensurebin          \
     bin_find "$bin_find" \
-    bin_rm   "$bin_rm"
+    bin_ls "$bin_ls"     \
+    bin_rm "$bin_rm"
 
   dot_checkbin bin_sudo "$bin_sudo" "WARNING: cant install dot-root files, sudo \`$bin_sudo' not found!"
   has_sudo=$?
@@ -517,7 +518,10 @@ EOF
     if [ "$has_sudo" -eq 0 ]
     then
       [ -z "$force" ] && tar_args="-w"
-      (cd "$stgroot/root" && $bin_tar -c -f - .) | $bin_sudo $bin_tar -C / -x -f - $tar_args >&3
+      if [ -n "$($bin_ls -A $stgroot/root)" ]
+      then
+        (cd "$stgroot/root" && $bin_tar -c -f - .) | $bin_sudo $bin_tar -C / -x -f - $tar_args >&3
+      fi
     fi
   else
     dot_log_1 "refusing to install using this stgroot: $stgroot"
@@ -623,6 +627,31 @@ Other OPTIONS:
 EOF
 }
 
+dot_trap_int ()
+{
+  dot_finalize
+  exit 130
+}
+
+dot_trap_int2 ()
+{
+  dot_stdout <<EOF
+Aye!
+
+Interrupting in the middle of an install operation. The staged and
+backup files have not been removed. If you want to restore the backup
+(the files the modules say to keep), issue:
+
+  # stgdir: $stgroot
+  $ tar -C $root -x $dotbckp
+
+Good Luck and remember removing them!
+EOF
+  exit 131
+}
+
+trap dot_trap_int INT
+
 dot_loadrc
 dot_loadenv "$@"
 dot_initialize
@@ -630,6 +659,7 @@ dot_chkenv && {
   dot_fetch
   dot_stage
   dot_bck_save
+  [ -s "$dotbckp" ] && trap dot_trap_int2 INT
   dot_install
   dot_bck_load
 }
