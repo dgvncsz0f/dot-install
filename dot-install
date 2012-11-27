@@ -217,51 +217,11 @@ dot_chkenv ()
 {
   if [ -z "$bundle" -a -z "$module" ]
   then
-    dot_quit <<EOF
-Usage: $self [OPTION]...
-This script will download a git repository, namely a dot repository,
-and will install all modules that match a given bundle or module
-specification.
-
-Refer to
-https://github.com/dgvncsz0f/dot-install/blob/stable/README.rst for
-information about the repository layout.
-
-Mandatory OPTIONS:
- bundle  The bundle to install. May be used in conjunction with module.
-
- module  The module to install. May be used in conjunction with bundle.
-
-   repo  The git repository to clone [default: $repo]
-
-At least one bundle or module must be given.
-
-Other OPTIONS:
-
-      root  The directory to install the files [default: $root]
-
-    rcfile  The file to load at startup. You may use this to set defaults
-
- verbosity  Adjusts the script verbosity. Ranges from 0 [no output] to 3
-            [very chatty] logfile=LOGFILE
-
-            The file that will capture the output of the commands, like
-            git for instance. This is a good place to look for errors.
-
-     nopull If set it never use /git pull/ and always perform /git
-            clone/.
-
-      force When using dist-root, a confirmation is asked before every
-            action. If you don't want this, set force=true
-
-     dryrun If defined, it only stages files, but do not install
-            them. This is usually for development purposes, but you
-            may use to double check the files that will be installed.
-EOF
+    dot_help
     return 1
   fi
 
-  dot_log_2 "dot-install environemnt"
+  dot_log_2 "dot-install"
   dot_log_2 "============================================================================"
   dot_log_2 "     repo: $repo"
   dot_log_2 "     root: $root"
@@ -291,13 +251,14 @@ dot_initialize ()
     exec >$logfile 2>&1
   fi
 
-  dot_ensurebin            \
-    bin_cut "$bin_cut"     \
-    bin_mkdir "$bin_mkdir" \
+  dot_ensurebin              \
+    bin_cut "$bin_cut"       \
+    bin_mkdir "$bin_mkdir"   \
+    bin_mktemp "$bin_mktemp" \
     bin_md5sum "$bin_md5sum"
 
-  hash=$(echo "$repo" | $bin_md5sum - | $bin_cut -d\  -f1)
-  dotroot=~/.dot/repositories/$hash
+  uniqid=$(echo "$repo" | $bin_md5sum - | $bin_cut -d\  -f1)
+  dotroot=~/.dot/repositories/$uniqid
   stgroot=$($bin_mktemp -d /tmp/dot-install.XXXXXXX)
   dotbckp=$($bin_mktemp /tmp/dot-backup.XXXXXXX)
 
@@ -314,7 +275,7 @@ dot_initialize ()
 
   if [ ! -r "$dotbckp" ]
   then
-    dot_dye "could not initialize backup file: $dotbckp"
+    dot_dye "could not initialize backup: $dotbckp"
   fi
 
   if [ -n "$nopull" ]
@@ -347,8 +308,8 @@ dot_fetch ()
     bin_git "$bin_git" \
     bin_env "$bin_env" \
     bin_rm "$bin_rm"
-    
-  
+
+
   if [ -d "$dotroot" ]
   then
     dot_log_2 "using git pull"               && \
@@ -425,7 +386,7 @@ dot_run_hook () {
   return 0
 }
 
-dot_stage () 
+dot_stage ()
 {
   dot_ensurebin          \
     bin_tar "$bin_tar"   \
@@ -486,7 +447,12 @@ dot_bck_save ()
         f=${f#/}
         if [ -f "$root/$f" ]
         then
-          (cd $root && $bin_tar -u -v -f "$dotbckp" "$f" | dot_log_2)
+          if [ -s "$dotbckp" ]
+          then
+            (cd $root && $bin_tar -u -v -f "$dotbckp" "$f" | dot_log_2)
+          else
+            (cd $root && $bin_tar -c -v -f "$dotbckp" "$f" | dot_log_2)
+          fi
         fi
       done
     fi
@@ -496,13 +462,13 @@ dot_bck_save ()
 dot_bck_load ()
 {
   dot_log_1 "bckload : $dotbckp"
-  if [ -r "$dotbckp" -a -s "$dotbckp" ]
+  if [ -s "$dotbckp" ]
   then
     $bin_tar -C "$root" -x -v -f "$dotbckp" | dot_log_2
   fi
 }
 
-dot_install () 
+dot_install ()
 {
   local has_sudo tar_args
 
@@ -610,6 +576,51 @@ dot_log_1 ()
   else
     dot_devnull "$@"
   fi
+}
+
+dot_help ()
+{
+  dot_quit <<EOF
+Usage: $self [OPTION]...
+This script will download a git repository, namely a dot repository,
+and will install all modules that match a given bundle or module
+specification.
+
+Refer to
+https://github.com/dgvncsz0f/dot-install/blob/stable/README.rst for
+information about the repository layout.
+
+Mandatory OPTIONS:
+ bundle  The bundle to install. May be used in conjunction with module.
+
+ module  The module to install. May be used in conjunction with bundle.
+
+   repo  The git repository to clone [default: $repo]
+
+At least one bundle or module must be given.
+
+Other OPTIONS:
+
+      root  The directory to install the files [default: $root]
+
+    rcfile  The file to load at startup. You may use this to set defaults
+
+ verbosity  Adjusts the script verbosity. Ranges from 0 [no output] to 3
+            [very chatty] logfile=LOGFILE
+
+            The file that will capture the output of the commands, like
+            git for instance. This is a good place to look for errors.
+
+     nopull If set it never use /git pull/ and always perform /git
+            clone/.
+
+      force When using dist-root, a confirmation is asked before every
+            action. If you don't want this, set force=true
+
+     dryrun If defined, it only stages files, but do not install
+            them. This is usually for development purposes, but you
+            may use to double check the files that will be installed.
+EOF
 }
 
 dot_loadrc
