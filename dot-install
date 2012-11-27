@@ -238,9 +238,11 @@ EOF
   dot_log_2 "verbosity: $verbosity"
   dot_log_2 "  logfile: $logfile"
   dot_log_2 "  dotroot: $dotroot"
+  dot_log_2 "   nopull: $nopull"
+  dot_log_2 "   dryrun: $dryrun"
+  dot_log_2 "----------------------------------------------------------------------------"
   dot_log_2 "   backup: $dotbckp"
   dot_log_2 "  stgroot: $stgroot"
-  dot_log_2 "   dryrun: $dryrun"
   dot_log_2 "============================================================================"
 
   return 0
