@@ -397,12 +397,12 @@ dot_stage ()
 
   if [ -n "$bundle" -a -n "$module" ]
   then
-    dot_log_1 "stgmods : $bundle+$module@$stgroot"
+    dot_log_1 "stgmods : @{$bundle} +{$module} ~> $stgroot"
   elif [ -n "$bundle" ]
   then
-    dot_log_1 "stgmods : $bundle@$stgroot"
+    dot_log_1 "stgmods : @{$bundle} ~> $stgroot"
   else
-    dot_log_1 "stgmods : +$module@$stgroot"
+    dot_log_1 "stgmods : +{$module} ~> $stgroot"
   fi
 
   for mod in $(dot_lsmod | $bin_sort | $bin_uniq)
