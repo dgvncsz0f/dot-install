@@ -518,7 +518,7 @@ EOF
       [ -z "$force" ] && tar_args="-w"
       if [ -n "$($bin_ls -A $stgroot/root)" ]
       then
-        (cd "$stgroot/root" && $bin_tar -c -f - .) | $bin_sudo $bin_tar -C / -x -f - $tar_args >&3
+        (cd "$stgroot/root" && $bin_tar -c -f - .) | $bin_sudo $bin_tar --no-overwrite-dir -C / -x -f - $tar_args >&3
       fi
     fi
   else
