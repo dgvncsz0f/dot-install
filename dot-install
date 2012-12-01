@@ -371,27 +371,72 @@ dot_lsmod ()
 }
 
 dot_run_hook () {
-  local mod hook fakeroot
-  mod=$1
-  hook=$2
-  fakeroot=$3
+  local srcroot bundle module hook fakeroot
+  srcroot=$1
+  bundle=$2
+  module=$3
+  hook=$4
+  fakeroot=$5
 
-  if [ -f "$mod/hook/$hook" ]
+  if [ -f "$srcroot/hook/$hook" ]
   then
-    dot_log_2 "running hook: $hook"
-    if ! (cd $mod && $bin_env dot_mod=$mod    \
-                              dot_hook=$hook  \
-                              dot_root=$fakeroot "$mod/hook/$hook")
+    dot_log_2 "running hook: $module/$hook"
+    if ! (cd "$srcroot" && $bin_env dot_bundle="$bundle" \
+                                    dot_module="$module" \
+                                    dot_hook="$hook"     \
+                                    dot_root="$fakeroot" "$srcroot/hook/$hook")
     then
-      dot_stdout "$mod/hook/$hook: failure"
+      dot_stdout "$module/$hook: failure"
       return 1
     fi
   fi
   return 0
 }
 
+dot_module_name ()
+{
+  local tmp bname
+  tmp=$1
+  bname=$(dot_bundle_name "$1")
+
+  dot_ensurebin bin_expr "$bin_expr"
+
+  if $bin_expr "$tmp" : "^/modules/" 2>/dev/null >/dev/null
+  then
+    echo "${tmp#/modules/}"
+  else
+    echo "${tmp#/bundles/$bname/}"
+  fi
+}
+
+dot_bundle_name ()
+{
+  local tmp
+  tmp=$1
+
+  dot_ensurebin bin_expr "$bin_expr"
+
+  if $bin_expr "$tmp" : "^/bundles/" 2>/dev/null >/dev/null
+  then
+    while [ -n "$tmp" -a "$tmp" != "." -a "$tmp" != "/" ]
+    do
+      if [ $(dirname "$tmp") = "/bundles" ]
+      then
+        echo "${tmp#/bundles/}"
+        break
+      fi
+
+      tmp=$(dirname "$tmp")
+    done
+  fi
+
+  return 0
+}
+
 dot_stage ()
 {
+  local bname mname
+
   dot_ensurebin          \
     bin_tar "$bin_tar"   \
     bin_touch "$bin_touch"
@@ -406,24 +451,30 @@ dot_stage ()
     dot_log_1 "stgmods : +{$module} ~> $stgroot"
   fi
 
-  for mod in $(dot_lsmod)
+  for m in $(dot_lsmod)
   do
-    modname=${mod#$dotroot}
-    dot_log_2 "staging ${modname#/modules}"
+    bname=$(dot_bundle_name "${m#$dotroot}")
+    mname=$(dot_module_name "${m#$dotroot}")
+    if [ -n "$bname" ]
+    then
+      dot_log_2 "staging @$bname +$mname"
+    else
+      dot_log_2 "staging +$mname"
+    fi
 
-    dot_run_hook "$mod" pre "$stgroot/dist" && {
+    dot_run_hook "$m" "$bname" "$mname" pre "$stgroot/dist" && {
 
-      if [ -d "$mod/dist" ]
+      if [ -d "$m/dist" ]
       then
-        (cd "$mod/dist" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot/dist" -x -v -f - | dot_log_3
+        (cd "$m/dist" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot/dist" -x -v -f - | dot_log_3
       fi
 
-      if [ -d "$mod/dist-root" ]
+      if [ -d "$m/dist-root" ]
       then
-        (cd "$mod/dist-root" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot/root" -x -v -f - | dot_log_3
+        (cd "$m/dist-root" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot/root" -x -v -f - | dot_log_3
       fi
 
-      dot_run_hook "$mod" post "$stgroot/dist"
+      dot_run_hook "$m" "$bname" "$mname" post "$stgroot/dist"
     }
   done
 

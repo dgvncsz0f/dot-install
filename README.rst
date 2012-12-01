@@ -119,12 +119,14 @@ variables defined:
             itself needs to create/modify any file it must relative to
             this directory;
 
-:dot_mod: The absolute path of the module directory;
+:dot_module: The name of the module;
+
+:dot_bundle: The name of the bundle, if any;
 
 :dot_hook: Either `pre` or `post`;
 
-The current directory will be set to `$dot_mod` prior invoking the
-script.
+The current directory will be set to the current module being
+installed prior invoking the script.
 
 One last important thing about hooks. If the exit status of the *pre*
 script is non zero, the module is not installed.
