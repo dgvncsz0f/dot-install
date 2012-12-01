@@ -143,7 +143,7 @@ How it works
 `dot-install` is a shell script. This, hopefully, make it easier to
 run it to deploy files to servers and fresh new machines.
 
-From a birds-eye view, the scripts performs five functions:
+From a birds-eye view, the scripts performs five functions [#]_:
 
 1. clone the git repository;
 
@@ -155,7 +155,7 @@ From a birds-eye view, the scripts performs five functions:
 
 5. restore the backup;
 
-The first stage will clone the git repository [#]_ into the following
+The first stage will clone the git repository into the following
 directory::
 
   ~/.dot/repositories/
@@ -167,22 +167,25 @@ At this phase, it will also initialize/update any git submodule
 defined [something I use a lot].
 
 Past fetching the files and the modules have been figured, files will
-be staged into a temporary location [#]_. The actual directory is
-defined by the `mktemp` program.
+be staged into a temporary location. The actual directory is defined
+by the `mktemp` program.
 
 The pre/post hooks are invoked in this stage. At this point nothing
 have been changed, but everything that will be done is available at
 the staging directory.
 
 Now the script will look for save files and copy all files that need
-not to be kept intact. They will be restored later, in the end [#]_.
+not to be kept intact. They will be restored later, in the end.
 
 And then comes the installing phase. Here, two operations are
 performed:
 
-1. Remove the directories that will be modified [#]_;
+1. Only when *purge=true*, remove the top level directories that
+   exists in *stgroot* from *distroot*. In other words, when it is
+   supposed to install any files under *~/.emacs.d/*, it will first
+   remove ~/.emacs.d. The **default is purge=false**;
 
-2. Copy the files to the final location [#]_;
+2. Copy the files to the final location;
 
 The remove step is necessary as the script don't keep track of what
 have been installed. After this is done, is it just a matter of
@@ -200,14 +203,9 @@ carefully review what will be done. Lastly, if `sudo' can't be find it
 just ignores the `dist-root` directory.
 
 Finally, it will retore any files that have been put into the
-backup. Jobs done [#]_!
+backup. Jobs done!
 
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L343
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L428
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L470
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L535
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L546
-.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L496
+.. [#] https://github.com/dgvncsz0f/dot-install/blob/master/dot-install#L719
 
 LICENSE
 =======
