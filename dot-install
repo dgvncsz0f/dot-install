@@ -558,7 +558,6 @@ EOF
       do
         top=${top#$stgroot/dist/}
         dot_log_2 "removing $root/$top"
-        dot_stdout "$root/$top"
         if [ -d "$root/$top" ]
         then
           $bin_rm -r -v -f "$root/$top" | dot_log_3
