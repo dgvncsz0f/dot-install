@@ -116,8 +116,11 @@ As stated above, any script file will do. There are three environment
 variables defined:
 
 :dot_root: The location where files will be installed. If the hook
-            itself needs to create/modify any file it must relative to
-            this directory;
+           itself needs to create/modify any file it must relative to
+           this directory;
+
+:dot_fsroot: The location where files under `dist-root` directory will
+             be installed.
 
 :dot_module: The name of the module;
 

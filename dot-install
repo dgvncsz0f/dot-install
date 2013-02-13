@@ -377,6 +377,7 @@ dot_run_hook () {
   module=$3
   hook=$4
   fakeroot=$5
+  fsroot=$6
 
   if [ -f "$srcroot/hook/$hook" ]
   then
@@ -384,6 +385,7 @@ dot_run_hook () {
     if ! (cd "$srcroot" && $bin_env dot_bundle="$bundle" \
                                     dot_module="$module" \
                                     dot_hook="$hook"     \
+                                    dot_fsroot="$fsroot" \
                                     dot_root="$fakeroot" "$srcroot/hook/$hook")
     then
       dot_stdout "$module/$hook: failure"
@@ -462,7 +464,7 @@ dot_stage ()
       dot_log_2 "staging +$mname"
     fi
 
-    dot_run_hook "$m" "$bname" "$mname" pre "$stgroot/dist" && {
+    dot_run_hook "$m" "$bname" "$mname" pre "$stgroot/dist" "$stgroot/root" && {
 
       if [ -d "$m/dist" ]
       then
@@ -474,7 +476,7 @@ dot_stage ()
         (cd "$m/dist-root" && $bin_tar -c -h -f - .) | $bin_tar -C "$stgroot/root" -x -v -f - | dot_log_3
       fi
 
-      dot_run_hook "$m" "$bname" "$mname" post "$stgroot/dist"
+      dot_run_hook "$m" "$bname" "$mname" post "$stgroot/dist" "$stgroot/root"
     }
   done
 
@@ -575,7 +577,7 @@ EOF
       [ -z "$force" ] && tar_args="-w"
       if [ -n "$($bin_ls -A $stgroot/root)" ]
       then
-        (cd "$stgroot/root" && $bin_tar -c -f - .) | $bin_sudo $bin_tar --no-overwrite-dir -C / -x -f - $tar_args >&3
+        (cd "$stgroot/root" && $bin_tar --owner root --group root -c -f - .) | $bin_sudo $bin_tar --no-overwrite-dir -C / -x -f - $tar_args >&3
       fi
     fi
   else
