@@ -165,11 +165,10 @@ dot_env_set ()
 
   key="$1"
   expr="$2"
-  size=$($bin_expr ${#key} + 2)
 
   if $bin_expr "$expr" : "^$key=[:a-zA-Z0-9_@/\.\-]*$" >/dev/null
   then
-    val=$(echo -n "$expr" | $bin_cut -c $size-)
+    val=$(echo -n "$expr" | $bin_cut -d = -f 2-)
     eval $key=\"$val\"
   fi
 }
@@ -258,7 +257,7 @@ dot_initialize ()
     bin_mktemp "$bin_mktemp" \
     bin_md5sum "$bin_md5sum"
 
-  uniqid=$(echo "$repo" | $bin_md5sum - | $bin_cut -d\  -f1)
+  uniqid=$(echo "$repo" | $bin_md5sum - | $bin_cut -d ' ' -f 1)
   dotroot=~/.dot/repositories/$uniqid
   stgroot=$($bin_mktemp -d /tmp/dot-install.XXXXXXX)
   dotbckp=$($bin_mktemp /tmp/dot-backup.XXXXXXX)
