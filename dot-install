@@ -40,7 +40,12 @@ purge=false
 
 bin_mktemp=${bin_mktemp:-mktemp}
 bin_unlink=${bin_unlink:-unlink}
-bin_md5sum=${bin_md5sum:-md5sum}
+if ! command -V md5sum 2>/dev/null >/dev/null
+then
+  bin_md5sum=${bin_md5sum:-md5}
+else
+  bin_md5sum=${bin_md5sum:-md5sum}
+fi
 bin_mkdir=${bin_mkdir:-mkdir}
 bin_cat=${bin_cat:-cat}
 bin_cut=${bin_cut:-cut}
