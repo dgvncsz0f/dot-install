@@ -114,7 +114,7 @@ dot_ensurebin ()
 
     if ! command -V "$prg" 2>/dev/null >/dev/null
     then
-      dot_dye <<EOF 
+      dot_dye <<EOF
 Could not find \`$prg' program. You may provide the right location for
 this using:
 
@@ -143,7 +143,7 @@ dot_checkbin ()
     if ! command -V "$prg" 2>/dev/null >/dev/null
     then
       res=1
-      dot_stdout <<EOF 
+      dot_stdout <<EOF
 $msg
 
 You may provide the right location for this using:
@@ -317,20 +317,20 @@ dot_fetch ()
 
   if [ -d "$dotroot" ]
   then
-    dot_log_2 "using git pull"               && \
-    (cd "$dotroot"                           && \
+    dot_log_2 "using git pull" && \
+    (cd "$dotroot" && \
        $bin_git pull --ff-only origin master && \
-       $bin_git submodule init               && \
+       $bin_git submodule init && \
        $bin_git submodule update
     ) || $bin_rm -r -f "$dotroot"
   fi
 
   if [ ! -d "$dotroot" ]
   then
-    dot_log_2 "using git clone"            && \
-    $bin_git clone "$repo" "$dotroot"      && \
-    (cd "$dotroot"                         && \
-       $bin_git submodule init             && \
+    dot_log_2 "using git clone" && \
+    $bin_git clone "$repo" "$dotroot" --depth 1 && \
+    (cd "$dotroot" && \
+       $bin_git submodule init && \
        $bin_git submodule update)
   fi
 
