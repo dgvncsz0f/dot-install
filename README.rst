@@ -1,3 +1,9 @@
+========
+archived
+========
+
+i'm using ansible now to manage my stuff.
+
 =============
  dot-install
 =============
@@ -63,7 +69,7 @@ following structure::
 
    repository
    +- modules
-      +- ... 
+      +- ...
    +- bundles
       +- ...
 
